@@ -5,6 +5,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
+	"io"
 	"os"
 	"time"
 
@@ -89,7 +90,6 @@ func main() {
 		}
 
 		insertedID, _ := result.LastInsertId()
-		fmt.Println("Inserted ID", insertedID)
 		res := response.Raw{
 			Data: APIResponse{
 				Success: true,
@@ -181,7 +181,10 @@ func main() {
 			return nil, err
 		}
 
-		files, err := client.Files.List().PageSize(10).Fields("nextPageToken, files(id, name)").Do()
+		files, err := client.Files.List().
+			PageSize(10).
+			Fields("nextPageToken, files(id, name, mimeType, webViewLink, webContentLink)").
+			Do()
 		if err != nil {
 			return nil, err
 		}
@@ -194,6 +197,107 @@ func main() {
 			Data: APIResponse{
 				Success: true,
 				Data:    filesResponse,
+			},
+		}
+		return res, nil
+	})
+
+	app.GET("/api/v1/files/{account_id}/{file_id}", func(ctx *gofr.Context) (interface{}, error) {
+		clerkUser := ctx.Context.Value(clerkUser).(*clerk.User)
+		accountId := ctx.Request.PathParam("account_id")
+		fileId := ctx.Request.PathParam("file_id")
+		query := `SELECT access_token, refresh_token, expires_at
+					FROM connected_accounts
+					WHERE user_id = $1
+					AND id = $2`
+		rows := ctx.SQL.QueryRowContext(ctx, query, clerkUser.ID, accountId)
+		var accessToken, refreshToken string
+		var expiresAt time.Time
+		if err := rows.Scan(&accessToken, &refreshToken, &expiresAt); err != nil {
+			return nil, err
+		}
+
+		if expiresAt.Before(time.Now()) {
+			config := &oauth2.Config{
+				ClientID:     app.Config.Get("GCP_CLIENT_ID"),
+				ClientSecret: app.Config.Get("GCP_CLIENT_SECRET"),
+				Endpoint: oauth2.Endpoint{
+					TokenURL: GoogleOauthTokenUrl,
+				},
+			}
+			tokenSource := config.TokenSource(ctx, &oauth2.Token{
+				RefreshToken: refreshToken,
+			})
+			token, err := tokenSource.Token()
+			if err != nil {
+				return nil, err
+			}
+
+			accessToken = token.AccessToken
+			updateQuery := `UPDATE connected_accounts 
+								SET access_token = $1
+								WHERE id = $2
+								AND user_id = $3`
+
+			_, err = ctx.SQL.ExecContext(ctx, updateQuery, accessToken, accountId, clerkUser.ID)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+			AccessToken: accessToken,
+		})
+		driveService, err := drive.NewService(ctx, option.WithTokenSource(tokenSource))
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := driveService.Files.Get(fileId).Download()
+		if err != nil {
+			return nil, err
+		}
+
+		defer resp.Body.Close()
+		fileData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		//fmt.Println("FILE DATA", fileData)
+		//url := fmt.Sprintf("https://www.googleapis.com/drive/v3/files/%s?alt=media", fileId)
+		//client := &http.Client{}
+		//req, err := http.NewRequest("GET", url, nil)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//
+		//req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+		//req.Header.Set("Accept", "application/json")
+		//resp, err := client.Do(req)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//
+		//defer resp.Body.Close()
+		//fileData, err := io.ReadAll(resp.Body)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		//res := response.Raw{
+		//	Data: APIResponse{
+		//		Success: true,
+		//		Data:    fileData,
+		//	},
+		//}
+		res := response.Response{
+			Data: APIResponse{
+				Success: true,
+				Data:    fileData,
+			},
+			Headers: map[string]string{
+				"X-Contains-File": "true",
 			},
 		}
 		return res, nil

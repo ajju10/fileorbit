@@ -29,7 +29,7 @@ export async function exchangeCodeForToken(
 
     return await response.json();
   } catch (e) {
-    console.log("Error", e);
+    console.error("Error", e);
     return null;
   }
 }

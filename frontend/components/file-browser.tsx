@@ -1,100 +1,93 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FileIcon, FolderIcon, DownloadIcon, Cloud } from "lucide-react";
+"use client";
 
-// Mock data for connected accounts and files
-const connectedAccounts = [
-  { id: "1", name: "Google Drive", icon: Cloud },
-  { id: "2", name: "Dropbox", icon: Cloud },
-  { id: "3", name: "OneDrive", icon: Cloud },
-];
+import { FileIcon, FolderIcon } from "lucide-react";
+import { FileData } from "@/lib/types";
+import Link from "next/link";
 
-const mockFiles = [
-  { id: "1", name: "Document.pdf", type: "file", size: "2.5 MB" },
-  { id: "2", name: "Images", type: "folder", itemCount: 15 },
-  { id: "3", name: "Presentation.pptx", type: "file", size: "5.1 MB" },
-  { id: "4", name: "Spreadsheet.xlsx", type: "file", size: "1.8 MB" },
-  { id: "5", name: "Projects", type: "folder", itemCount: 8 },
-  { id: "6", name: "Report.docx", type: "file", size: "3.2 MB" },
-];
-
-export default function FileBrowser() {
-  const [selectedAccount, setSelectedAccount] = useState(connectedAccounts[0].id);
-
-  const handleAccountChange = (accountId: string) => {
-    setSelectedAccount(accountId);
-    // In a real application, you would fetch files for the selected account here
-  };
-
-  const handleFileAction = (file: (typeof mockFiles)[0]) => {
-    if (file.type === "file") {
-      console.log(`Downloading file: ${file.name}`);
-      // Implement file download logic here
-    } else {
-      console.log(`Opening folder: ${file.name}`);
-      // Implement folder navigation logic here
-    }
-  };
+export default function FileBrowser({
+  files,
+  accountId,
+}: {
+  files: FileData[];
+  accountId: number;
+}) {
+  const driveFiles = files.filter((item) => item.mimeType !== "application/vnd.google-apps.folder");
+  const driveFolders = files.filter(
+    (item) => item.mimeType === "application/vnd.google-apps.folder"
+  );
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">File Viewer</h1>
-        <Select value={selectedAccount} onValueChange={handleAccountChange}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent>
-            {connectedAccounts.map((account) => (
-              <SelectItem key={account.id} value={account.id}>
-                <div className="flex items-center">
-                  <account.icon className="mr-2 h-4 w-4" />
-                  {account.name}
-                </div>
-              </SelectItem>
+      <div className="flex flex-col gap-4">
+        <div className="folder-section">
+          <span className="text-xl font-extralight">Folders</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 mt-4 gap-4">
+            {driveFolders.map((folder) => (
+              <Link
+                href={`/dashboard/folders/${accountId}/${folder.id}`}
+                key={folder.id}
+                className="flex items-center border-2 border-cyan-600 hover:bg-slate-300 px-4 py-2 rounded-3xl"
+              >
+                <FolderIcon className="mr-2 h-5 w-5" />
+                {folder.name}
+              </Link>
             ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockFiles.map((file) => (
-          <Card key={file.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                {file.type === "folder" ? (
-                  <FolderIcon className="mr-2 h-6 w-6 text-blue-500" />
-                ) : (
-                  <FileIcon className="mr-2 h-6 w-6 text-gray-500" />
-                )}
+          </div>
+        </div>
+        <div className="files-section">
+          <span className="text-xl font-extralight">Files</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 mt-4 gap-4">
+            {driveFiles.map((file) => (
+              // <Link
+              //   href={file.webViewLink!}
+              //   key={file.id}
+              //   className="flex items-center border-2 border-cyan-600 hover:bg-slate-300 px-4 py-2 rounded-3xl"
+              //   target="_blank"
+              // >
+              //   <FileIcon className="mr-2 h-6 w-6" />
+              //   {file.name}
+              // </Link>
+              <Link
+                key={file.id}
+                href={`/dashboard/files/${accountId}/${file.id}`}
+                className="flex items-center border-2 border-cyan-600 hover:bg-slate-300 px-4 py-2 rounded-3xl hover:underline"
+              >
+                <FileIcon className="mr-2 h-6 w-6" />
                 {file.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500">
-                {file.type === "folder" ? `${file.itemCount} items` : `Size: ${file.size}`}
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={() => handleFileAction(file)} variant="outline">
-                {file.type === "folder" ? "Open" : "Download"}
-                {file.type === "folder" ? (
-                  <FolderIcon className="ml-2 h-4 w-4" />
-                ) : (
-                  <DownloadIcon className="ml-2 h-4 w-4" />
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
+      {/*<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">*/}
+      {/*  {files.map((file) => (*/}
+      {/*    <Card className="border-2 border-blue-300 bg-slate-50" key={file.id}>*/}
+      {/*      <CardHeader>*/}
+      {/*        <CardTitle className="flex items-center">*/}
+      {/*          {file.mimeType === "application/vnd.google-apps.folder" ? (*/}
+      {/*            <FolderIcon className="mr-2 h-6 w-6 text-blue-500" />*/}
+      {/*          ) : (*/}
+      {/*            <FileIcon className="mr-2 h-6 w-6 text-gray-500" />*/}
+      {/*          )}*/}
+      {/*          {file.name}*/}
+      {/*        </CardTitle>*/}
+      {/*      </CardHeader>*/}
+      {/*      <CardFooter>*/}
+      {/*        {file.mimeType === "application/vnd.google-apps.folder" ? (*/}
+      {/*          <Button onClick={() => onFolderClick(file)} className="w-full" variant="outline">Open Folder</Button>*/}
+      {/*        ) : (*/}
+      {/*          <Button*/}
+      {/*          asChild*/}
+      {/*          className="w-full"*/}
+      {/*          variant="outline"*/}
+      {/*        >*/}
+      {/*          <Link href={`/dashboard/files/${accountId}/${file.id}`}>Open File</Link>*/}
+      {/*        </Button>*/}
+      {/*        )}*/}
+      {/*      </CardFooter>*/}
+      {/*    </Card>*/}
+      {/*  ))}*/}
+      {/*</div>*/}
     </div>
   );
 }

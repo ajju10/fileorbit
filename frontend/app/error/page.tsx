@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 
 export default function Page() {
   const searchParams = useSearchParams();
-  console.log("Search Params:", searchParams);
   const message = searchParams.get("message");
 
   return (

@@ -8,7 +8,6 @@ export default async function Page() {
   const { getToken } = await auth();
   const authToken = await getToken();
   const connectedAccountsRes = await fetchConnectedAccounts(authToken!);
-  console.log("connected account", connectedAccountsRes);
 
   if (connectedAccountsRes === null) {
     return <p>Unexpected error occurred</p>;
@@ -40,7 +39,6 @@ export default async function Page() {
                 </CardHeader>
                 <CardContent>
                   {connectedAccounts.map((account) => (
-                    // <li key={account.id}>{account.name}</li>
                     <Link
                       className="border-b"
                       href={`/dashboard/files/${account.id}`}

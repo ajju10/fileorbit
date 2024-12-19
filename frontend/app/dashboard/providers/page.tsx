@@ -54,8 +54,6 @@ export default function Page() {
     return <p>{error}</p>;
   }
 
-  console.log("Data", data);
-
   const initiateOAuth = (provider: Provider) => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     const redirectUri = encodeURIComponent("http://localhost:3000/oauth-callback");

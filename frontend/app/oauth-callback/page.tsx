@@ -19,7 +19,6 @@ export default async function OAuthCallback({
     const { provider, driveName } = JSON.parse(decodeURIComponent(state));
     const authToken = await getToken();
     const exchangeTokenResponse = await exchangeCodeForToken(authToken!, code, provider, driveName);
-    console.log("Exchange response:", exchangeTokenResponse);
 
     // Store the access token securely (e.g., in a HTTP-only cookie)
     // cookies().set('accessToken', accessToken, { httpOnly: true, secure: true });
